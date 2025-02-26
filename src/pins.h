@@ -25,5 +25,5 @@
 #define SD_SCK 39
 #define NEOPIXEL 46
 #define LED_BUILTIN 13
-#define SDA 47
-#define SCL 48
+#define SDA_p 47
+#define SCL_p 48

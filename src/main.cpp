@@ -1,59 +1,18 @@
-#include "Arduino.h"
-#include "AD985X_mod.h"
-#include <pins.h>
-// Constants and globals
-#define COSTAS_SEQ_LEN 7
-#define AD9850_WORD_LEN 40
-#define DDS_DATA_PIN D11
-#define DDS_CLK_PIN D12
-#define COSTAS_TXRQ_PIN A5
-#define PSK_TXRQ_PIN A4
-#define PSK_CLK_PIN D2
-#define PSK_TRIG_PIN A2
-#define BEACON_ID_MSG "W2HAT COSTAS ARRAY BEACON" // Beacon ID message
-#define COSTAS_TRIG_PIN A3
-#define COSTAS_CLK_PIN D4
-#define FQ_UD_PIN D6
-#define DDS_RST D7
-#define COSTAS_SEQUENCE = { 3, 1, 4, 0, 6, 5, 2 }
-// Constants for frequency calculation
-#define BASEBAND_FREQ 28250000ULL  // 28.25 MHz for compliance with the FCC part 97.203 on unattended beacon transmissions.
-#define FREQ_OFFSET 1000ULL       // 1000 Hz offset (for good USB reception)
-#define FREQ_STEP 100ULL          // 100 Hz step
+/*******************************************
+ *  File: main.cpp
+ *  Author: Ruslan Gindullin, W2HAT
+ *  Date: 2025-02-25
+ *  For the HamSCI 2025 Workshop
+ *  See header file for details and
+ *  user configuration.
+*******************************************/
 
-enum Mode {
-    COSTAS,
-    PSK
-}; 
+#include "main.h"
 
-// SPI object
-//SPIClass *spi = new SPIClass(FSPI);
-
-// DDS object
-AD9850 dds(99, DDS_RST, 98, DDS_DATA_PIN, DDS_CLK_PIN);
-
-uint8_t sequence [ COSTAS_SEQ_LEN ] = { 3, 1, 4, 0, 6, 5, 2 };
-uint32_t freqArray [ COSTAS_SEQ_LEN ];
-bool costasActive = false;
-bool pskActive = false;
-String msgString = "W2HAT COSTAS ARRAY BEACON"; // Beacon ID message
-
-
-SemaphoreHandle_t xMutex;
-
-TaskHandle_t ModeManagerTaskHandle = NULL;
-TaskHandle_t CostasTaskHandle = NULL;
-TaskHandle_t PskTaskHandle = NULL;
-QueueHandle_t xQueue;
-
-const TickType_t xDelay = 1 / portTICK_PERIOD_MS;
-
-
-enum MessageType { COSTAS_TRIGGER, PSK_TRIGGER};
-struct Message {
-    MessageType type;
-};
-
+/*******************************************
+ *      Function definitions
+ ******************************************/
+ 
 void arrayInit( uint32_t *freqArray, uint8_t *sequence, uint32_t base, uint32_t offset, uint32_t step, uint8_t len ) {
     for (int i = 0; i < len; i++) {
         freqArray[i] = base + offset + (sequence[i] * step);
@@ -72,7 +31,6 @@ void costasLoader(void *pvParameters) {
                 dds.setFrequency(freqArray[i]);
                 // Release the mutex after accessing the shared resource
                 xSemaphoreGive(xMutex);
-                Serial.println(dds.getFactor());
             }
             // Wait for the next clock pulse
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -162,19 +120,6 @@ void modeMaster(void *pvParameters) {
                         vTaskDelay(xDelay*1000);
                     } else {
                         Serial.println("Costas Triggered");
-                        Serial.print("Stack size watermark: ");
-                        Serial.println(uxTaskGetStackHighWaterMark(NULL));
-                        Serial.print("Free heap: ");
-                        Serial.println(xPortGetFreeHeapSize());
-                        /*
-                        Serial.print("SPI MOSI: ");
-                        Serial.println(MOSI);
-                        Serial.print("SPI MISO: ");
-                        Serial.println(MISO);
-                        Serial.print("SPI SCK: ");
-                        Serial.println(SCK);
-                        Serial.print("SPI SS: ");
-                        Serial.println(SS);*/
                     }
                     break;
                 case PSK_TRIGGER:
@@ -201,10 +146,6 @@ void modeMaster(void *pvParameters) {
                         vTaskDelay(xDelay*1000);
                     } else {
                         Serial.println("PSK Triggered");
-                        Serial.print("Stack size watermark: ");
-                        Serial.println(uxTaskGetStackHighWaterMark(NULL));
-                        Serial.print("Free heap: ");
-                        Serial.println(xPortGetFreeHeapSize());
                     }
                     break;
             }
@@ -212,7 +153,9 @@ void modeMaster(void *pvParameters) {
     }
 }
 
-
+/*******************************************
+ *  Interrupt Service Routines
+ *******************************************/
 
 void IRAM_ATTR onCostasTrigger() {
     if(!costasActive){
@@ -235,6 +178,7 @@ void IRAM_ATTR onPskTrigger() {
         }
     }
 }
+
 void IRAM_ATTR onCostasClock() {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     if (CostasTaskHandle != NULL) {
@@ -244,6 +188,7 @@ void IRAM_ATTR onCostasClock() {
         }
     }
 }
+
 void IRAM_ATTR onPskClock() {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     if (PskTaskHandle != NULL) {
@@ -254,9 +199,17 @@ void IRAM_ATTR onPskClock() {
     }
 }
 
+/*******************************************
+ *  Setup and loop
+ ******************************************/
+
+// Setup function
 void setup() {
+    // Initialize the serial port for debugging
     Serial.begin(115200);
+    // Create the queue for messages
     xQueue = xQueueCreate(10, sizeof(Message));
+    // Initialize the pins that are not handled by the library
     pinMode(COSTAS_TRIG_PIN, INPUT);
     pinMode(COSTAS_CLK_PIN, INPUT);
     pinMode(FQ_UD_PIN, INPUT);
@@ -264,15 +217,19 @@ void setup() {
     pinMode(PSK_TRIG_PIN, INPUT);
     pinMode(PSK_TXRQ_PIN, OUTPUT);
     pinMode(COSTAS_TXRQ_PIN, OUTPUT);
+    // Attach the interrupts to the pins
+    // The interrupts are triggered on the rising edge
     attachInterrupt(digitalPinToInterrupt(COSTAS_TRIG_PIN), onCostasTrigger, RISING);
     attachInterrupt(digitalPinToInterrupt(PSK_TRIG_PIN), onPskTrigger, RISING);
     attachInterrupt(digitalPinToInterrupt(COSTAS_CLK_PIN), onCostasClock, RISING);
     attachInterrupt(digitalPinToInterrupt(PSK_CLK_PIN), onPskClock, RISING);
-    //SPI.begin();
-    dds.begin();
-    //dds.setSPIspeed(40000); 
+    // Initialize the DDS object
+    dds.begin(); 
+    // Power up the DDS
     dds.powerUp();
+    // Initialize the frequency array
     arrayInit(freqArray, sequence, BASEBAND_FREQ, FREQ_OFFSET, FREQ_STEP, COSTAS_SEQ_LEN);
+    // Create the mode manager task
     xTaskCreate(
         modeMaster,                 // Function to implement the task
         "ModeMaster",               // Name of the task
@@ -281,11 +238,17 @@ void setup() {
         1,                          // Priority of the task
         &ModeManagerTaskHandle      // Task handle
     );
+    // Create the mutex for the AD9850 driver
     xMutex = xSemaphoreCreateMutex();
+    // Check if the mutex was created successfully
     if (xMutex == NULL) {
-        Serial.println("Failed to create mutex");
+        Serial.println("Failed to create mutex! Exiting...");
+        ESP.restart();
     }
 }
+// Loop function
 void loop() {
-    vTaskDelay(xDelay);
+    // Do nothing
+    // The tasks are running in the background
+    vTaskDelay(xDelay); 
 }
