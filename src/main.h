@@ -76,7 +76,7 @@
     // Costas sequence
     #define COSTAS_SEQUENCE { 3, 1, 4, 0, 6, 5, 2 } 
     // Baseband frequency
-    #define BASEBAND_FREQ 28250000ULL  // 28.25 MHz for compliance with the FCC part 97.203 on unattended beacon operation.
+    #define BASEBAND_FREQ 28260000ULL  // 28.25 MHz for compliance with the FCC part 97.203 on unattended beacon operation.
     // Frequency offset (frequency of 0 in the sequence)
     #define FREQ_OFFSET 1000ULL        // 1000 Hz offset (for good USB reception if tuned to 28.25 MHz)
     // Frequency step
@@ -87,34 +87,34 @@
 ***************************/
 
     // Data pin for the DDS. Connect with the AD9850 PCB module's serial data pin (or D0 on the bare chip)
-    #define DDS_DATA_PIN D11     
+    #define DDS_DATA_PIN A2     
 
     // Clock pin for the DDS. Connect with the AD9850 module's clock pin
-    #define DDS_CLK_PIN D12      
+    #define DDS_CLK_PIN A4      
 
     // TX request pin for Costas mode. Enables FQ_UD clock from the FPGA. Connect with the corresponding pin on the FPGA.
-    #define COSTAS_TXRQ_PIN A5   
+    #define COSTAS_TXRQ_PIN D2   
 
     // TX request pin for PSK mode. Enables FQ_UD clock from the FPGA. Connect with the corresponding pin on the FPGA.
-    #define PSK_TXRQ_PIN A4     
+    #define PSK_TXRQ_PIN D3     
 
     // MCU clock pin for PSK mode. Triggers individual word loading. Connect with the corresponding pin on the FPGA.
-    #define PSK_CLK_PIN D2        
+    #define PSK_CLK_PIN D4        
 
     // MCU trigger pin for PSK mode. Triggers the whole message transmission. Connect with the corresponding pin on the FPGA.
-    #define PSK_TRIG_PIN A2         
+    #define PSK_TRIG_PIN D5         
 
     // MCU trigger pin for Costas mode. Triggers the whole array transmission. Connect with the corresponding pin on the FPGA.
-    #define COSTAS_TRIG_PIN A3      
+    #define COSTAS_TRIG_PIN D6      
 
     // MCU clock pin for Costas mode. Triggers individual word loading. Connect with the corresponding pin on the FPGA.
-    #define COSTAS_CLK_PIN D4     
+    #define COSTAS_CLK_PIN D7     
 
     // FQ_UD signal pin. Driven by the FPGA. Connect with both the AD9850 module and the FPGA
-    #define FQ_UD_PIN D6        
+    #define FQ_UD_PIN A3        
 
     // Reset pin for the DDS. Connect with the AD9850 module's reset pin. Currently not used.
-    #define DDS_RST D7             
+    #define DDS_RST A1             
 
 /*************************** 
     Beacon ID message
