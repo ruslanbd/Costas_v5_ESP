@@ -1,10 +1,4 @@
-// Uncomment for Adafruit Metro ESP32-S3
-/*#define A0 17
-#define A1 18
-#define A2 1
-#define A3 2
-#define A4 3
-#define A5 4*/
+// Pins for Adafruit Metro ESP32-S2
 #define D0 5
 #define D1 6
 #define D2 7

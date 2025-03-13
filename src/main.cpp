@@ -43,7 +43,9 @@ void costasLoader(void *pvParameters) {
         Serial.println("Costas Task Deleted");
         costasActive = false;
         digitalWrite(COSTAS_TXRQ_PIN, LOW);
-        digitalWrite(RF_TRIG_PIN, LOW);
+        #ifdef EXT_AMP_MODE
+            digitalWrite(RF_TRIG_PIN, LOW);
+        #endif
         TaskHandle_t tempHandle = CostasTaskHandle;
         CostasTaskHandle = NULL;
         vTaskDelete(CostasTaskHandle);
@@ -82,7 +84,9 @@ void pskLoader(void *pvParameters) {
     dds.powerDown();
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     digitalWrite(PSK_TXRQ_PIN, LOW);
-    digitalWrite(RF_TRIG_PIN, LOW);
+    #ifdef EXT_AMP_MODE
+        digitalWrite(RF_TRIG_PIN, LOW);
+    #endif
     Serial.println("PSK Task Deleted");
     if(msg != NULL)  // Free the memory allocated for the message
     vPortFree(msg);
@@ -103,7 +107,9 @@ void modeMaster(void *pvParameters) {
                     costasActive = true;
                     pskActive = false;
                     digitalWrite(COSTAS_TXRQ_PIN, HIGH);
-                    digitalWrite(RF_TRIG_PIN, HIGH);
+                    #ifdef EXT_AMP_MODE
+                        digitalWrite(RF_TRIG_PIN, HIGH);
+                    #endif
                     if (xTaskCreate(
                         costasLoader,               // Function to implement the task
                         "CostasLoader",             // Name of the task
@@ -130,7 +136,9 @@ void modeMaster(void *pvParameters) {
                     costasActive = false;
                     pskActive = true;
                     digitalWrite(PSK_TXRQ_PIN, HIGH);
-                    digitalWrite(RF_TRIG_PIN, HIGH);
+                    #ifdef EXT_AMP_MODE
+                        digitalWrite(RF_TRIG_PIN, HIGH);
+                    #endif
                     if (xTaskCreate(
                         pskLoader,                  // Function to implement the task
                         "PskLoader",                // Name of the task
