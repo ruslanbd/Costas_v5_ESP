@@ -67,6 +67,13 @@
    User configuration. TODO: move to an SD card and implement
                 a configuration file reader.
 **************************************************************/
+
+/**************************************************************
+ * Debug mode
+ * Uncomment to enable debug mode
+ **************************************************************/
+ // #define DEBUG DEBUG
+
 /***************************
    Costas array parameters
 ***************************/
@@ -76,7 +83,7 @@
     // Costas sequence
     #define COSTAS_SEQUENCE { 3, 1, 4, 0, 6, 5, 2 } 
     // Baseband frequency
-    #define BASEBAND_FREQ 28260000ULL  // 28.25 MHz for compliance with the FCC part 97.203 on unattended beacon operation.
+    #define BASEBAND_FREQ 28250000ULL  // 28.25 MHz for compliance with the FCC part 97.203 on unattended beacon operation.
     // Frequency offset (frequency of 0 in the sequence)
     #define FREQ_OFFSET 1000ULL        // 1000 Hz offset (for good USB reception if tuned to 28.25 MHz)
     // Frequency step
@@ -114,7 +121,10 @@
     #define FQ_UD_PIN A3        
 
     // Reset pin for the DDS. Connect with the AD9850 module's reset pin. Currently not used.
-    #define DDS_RST A1             
+    #define DDS_RST A1      
+    
+    // Trigger pin for RF amplifier.
+    #define RF_TRIG_PIN D13
 
 /*************************** 
     Beacon ID message

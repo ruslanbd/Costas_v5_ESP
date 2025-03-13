@@ -43,6 +43,7 @@ void costasLoader(void *pvParameters) {
         Serial.println("Costas Task Deleted");
         costasActive = false;
         digitalWrite(COSTAS_TXRQ_PIN, LOW);
+        digitalWrite(RF_TRIG_PIN, LOW);
         TaskHandle_t tempHandle = CostasTaskHandle;
         CostasTaskHandle = NULL;
         vTaskDelete(CostasTaskHandle);
@@ -81,6 +82,7 @@ void pskLoader(void *pvParameters) {
     dds.powerDown();
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     digitalWrite(PSK_TXRQ_PIN, LOW);
+    digitalWrite(RF_TRIG_PIN, LOW);
     Serial.println("PSK Task Deleted");
     if(msg != NULL)  // Free the memory allocated for the message
     vPortFree(msg);
@@ -101,6 +103,7 @@ void modeMaster(void *pvParameters) {
                     costasActive = true;
                     pskActive = false;
                     digitalWrite(COSTAS_TXRQ_PIN, HIGH);
+                    digitalWrite(RF_TRIG_PIN, HIGH);
                     if (xTaskCreate(
                         costasLoader,               // Function to implement the task
                         "CostasLoader",             // Name of the task
@@ -127,6 +130,7 @@ void modeMaster(void *pvParameters) {
                     costasActive = false;
                     pskActive = true;
                     digitalWrite(PSK_TXRQ_PIN, HIGH);
+                    digitalWrite(RF_TRIG_PIN, HIGH);
                     if (xTaskCreate(
                         pskLoader,                  // Function to implement the task
                         "PskLoader",                // Name of the task
@@ -162,6 +166,9 @@ void IRAM_ATTR onCostasTrigger() {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         Message msg = { COSTAS_TRIGGER };
         xQueueSendFromISR(xQueue, &msg, &xHigherPriorityTaskWoken);
+        #ifdef DEBUG
+        Serial.println("Costas TriggeredISR");
+        #endif
         if (xHigherPriorityTaskWoken) {
             portYIELD_FROM_ISR();
         }
@@ -173,6 +180,9 @@ void IRAM_ATTR onPskTrigger() {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         Message msg = { PSK_TRIGGER };
         xQueueSendFromISR(xQueue, &msg, &xHigherPriorityTaskWoken);
+        #ifdef DEBUG
+        Serial.println("PSK TriggeredISR");
+        #endif
         if (xHigherPriorityTaskWoken) {
             portYIELD_FROM_ISR();
         }
@@ -207,26 +217,45 @@ void IRAM_ATTR onPskClock() {
 void setup() {
     // Initialize the serial port for debugging
     Serial.begin(115200);
+    #ifdef DEBUG
+    Serial.println("Waiting for user input...");
+    while (Serial.available() == 0) {
+        delay(100); // Wait 100ms
+    }
+    Serial.read(); // Consume the user input
+    Serial.println("User input received. Continuing setup.");
+    #endif
     // Create the queue for messages
     xQueue = xQueueCreate(10, sizeof(Message));
     // Initialize the pins that are not handled by the library
-    pinMode(COSTAS_TRIG_PIN, INPUT);
+    pinMode(COSTAS_TRIG_PIN, INPUT_PULLUP);
     pinMode(COSTAS_CLK_PIN, INPUT);
-    pinMode(FQ_UD_PIN, INPUT);
+    pinMode(FQ_UD_PIN, INPUT_PULLUP);
     pinMode(PSK_CLK_PIN, INPUT);
-    pinMode(PSK_TRIG_PIN, INPUT);
+    pinMode(PSK_TRIG_PIN, INPUT_PULLUP);
     pinMode(PSK_TXRQ_PIN, OUTPUT);
     pinMode(COSTAS_TXRQ_PIN, OUTPUT);
+    pinMode(RF_TRIG_PIN, OUTPUT);
+    #ifdef DEBUG
+    Serial.println("Pins initialized");
+    #endif
     // Attach the interrupts to the pins
     // The interrupts are triggered on the rising edge
     attachInterrupt(digitalPinToInterrupt(COSTAS_TRIG_PIN), onCostasTrigger, RISING);
     attachInterrupt(digitalPinToInterrupt(PSK_TRIG_PIN), onPskTrigger, RISING);
     attachInterrupt(digitalPinToInterrupt(COSTAS_CLK_PIN), onCostasClock, RISING);
     attachInterrupt(digitalPinToInterrupt(PSK_CLK_PIN), onPskClock, RISING);
+
+    #ifdef DEBUG
+    Serial.println("Interrupts attached");
+    #endif
     // Initialize the DDS object
     dds.begin(); 
     // Power up the DDS
     dds.powerUp();
+    #ifdef DEBUG
+    Serial.println("DDS powered up");
+    #endif
     // Initialize the frequency array
     arrayInit(freqArray, sequence, BASEBAND_FREQ, FREQ_OFFSET, FREQ_STEP, COSTAS_SEQ_LEN);
     // Create the mode manager task
@@ -238,6 +267,9 @@ void setup() {
         1,                          // Priority of the task
         &ModeManagerTaskHandle      // Task handle
     );
+    #ifdef DEBUG
+    Serial.println("Mode manager task created");
+    #endif
     // Create the mutex for the AD9850 driver
     xMutex = xSemaphoreCreateMutex();
     // Check if the mutex was created successfully
@@ -245,6 +277,9 @@ void setup() {
         Serial.println("Failed to create mutex! Exiting...");
         ESP.restart();
     }
+    #ifdef DEBUG
+    Serial.println("Mutex created successfully");
+    #endif
 }
 // Loop function
 void loop() {
